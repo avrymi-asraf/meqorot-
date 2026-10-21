@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "mcpServers": {
+    "books-search-server": {
+      "command": "python3",
+      "args": [
+        "/home/avreymi/teamwork_projects/agent_data_sources/tools/book_tool.py",
+        "--mcp"
+      ],
+      "env": {
+        "GOOGLE_BOOKS_API_KEY": "${GOOGLE_BOOKS_API_KEY}"
+      },
+      "description": "Book search and full-text retrieval across OpenLibrary, Google Books, HebrewBooks.org (JSONP/Suggest/Shas/PDF), Sefaria.org, and Internet Archive OCR.",
+      "tools": [
+        {
+          "name": "search_books",
+          "description": "Search across OpenLibrary, Google Books, HebrewBooks.org, and Sefaria.org catalogs.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Search query, title, or Sefaria reference"},
+              "source": {
+                "type": "string",
+                "enum": ["openlibrary", "googlebooks", "hebrewbooks", "sefaria"],
+                "default": "openlibrary"
+              },
+              "max_results": {"type": "integer", "default": 5}
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "fetch_ia_text",
+          "description": "Fetch public domain OCR text from Internet Archive by IA ID or OpenLibrary Work key, or check CDL status.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "ia_id": {"type": "string", "description": "Internet Archive identifier or OL...W key"},
+              "max_chars": {"type": "integer", "default": 10000}
+            },
+            "required": ["ia_id"]
+          }
+        },
+        {
+          "name": "fetch_book_text",
+          "description": "Fetch full text from OpenLibrary/IA, Sefaria.org reference, or HebrewBooks Shas.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "book_id": {"type": "string", "description": "Book ID, IA ID, Sefaria ref (e.g. 'Berakhot 2a'), or 'shas:1:2'"},
+              "source": {
+                "type": "string",
+                "enum": ["openlibrary", "sefaria", "hebrewbooks"],
+                "default": "openlibrary"
+              },
+              "max_chars": {"type": "integer", "default": 10000}
+            },
+            "required": ["book_id"]
+          }
+        }
+      ]
+    },
+    "local-books-server": {
+      "command": "python3",
+      "args": [
+        "/home/avreymi/teamwork_projects/agent_data_sources/tools/local_books_tool.py",
+        "--mcp"
+      ],
+      "env": {
+        "LOCAL_BOOKS_DB_PATH": "/home/avreymi/teamwork_projects/agent_data_sources/.local_books_index.db"
+      },
+      "description": "Local PDF/EPUB/TXT/MD book library indexer and search engine using PyMuPDF and SQLite FTS5 (unicode61 + trigram) with Hebrew nikkud stripping, visual-RTL PDF repair, and prefix/sofit expansion.",
+      "tools": [
+        {
+          "name": "index_local_books",
+          "description": "Index local PDF, EPUB, TXT, and Markdown books into the SQLite FTS5 search engine.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "paths": {"type": "string", "description": "Directory or file path to index"},
+              "force": {"type": "boolean", "default": false}
+            },
+            "required": ["paths"]
+          }
+        },
+        {
+          "name": "search_local_books",
+          "description": "Full-text search across indexed local books with Hebrew nikkud stripping, prefix expansion, and legacy PDF repair.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Hebrew or English search keywords"},
+              "limit": {"type": "integer", "default": 10},
+              "expand_hebrew": {"type": "boolean", "default": true}
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "get_local_book_page",
+          "description": "Fetch full text of a specific page from an indexed local book.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "file_path_or_title": {"type": "string", "description": "Book file path or title substring"},
+              "page_num": {"type": "integer", "default": 1}
+            },
+            "required": ["file_path_or_title"]
+          }
+        }
+      ]
+    },
+    "social-data-server": {
+      "command": "python3",
+      "args": [
+        "/home/avreymi/teamwork_projects/agent_data_sources/tools/social_tool.py",
+        "--mcp"
+      ],
+      "env": {
+        "SOCIALDATA_API_KEY": "${SOCIALDATA_API_KEY}",
+        "EXA_API_KEY": "${EXA_API_KEY}",
+        "APIFY_API_TOKEN": "${APIFY_API_TOKEN}",
+        "X_AUTH_TOKEN": "${X_AUTH_TOKEN}",
+        "X_CT0": "${X_CT0}",
+        "IG_SESSIONID": "${IG_SESSIONID}"
+      },
+      "description": "Social networks search and personal account reader across X.com (SocialData & personal cookies), Instagram (Apify & personal sessionid), Facebook, and Exa neural search.",
+      "tools": [
+        {
+          "name": "search_social",
+          "description": "Search social media posts across X.com, Instagram, and Facebook using managed APIs or personal session cookies.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Search keywords, handle, or 'bookmarks'/'saved'"},
+              "platform": {"type": "string", "enum": ["x", "instagram", "facebook"], "default": "x"},
+              "method": {"type": "string", "enum": ["auto", "socialdata", "exa", "apify", "personal"], "default": "auto"},
+              "max_results": {"type": "integer", "default": 10}
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "search_socialdata_tweets",
+          "description": "Direct search on X.com via SocialData.tools with advanced operators (lang:he, min_faves).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Twitter search query syntax"},
+              "max_results": {"type": "integer", "default": 10}
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "fetch_personal_x_timeline",
+          "description": "Read personal X.com Bookmarks or Home Timeline using X_AUTH_TOKEN and X_CT0 session cookies.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "mode": {"type": "string", "enum": ["bookmarks", "timeline"], "default": "bookmarks"},
+              "max_results": {"type": "integer", "default": 10}
+            }
+          }
+        },
+        {
+          "name": "fetch_personal_instagram_feed",
+          "description": "Read personal Instagram saved posts or profile feed using IG_SESSIONID cookie.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "username": {"type": "string", "description": "Instagram handle or 'saved'"},
+              "max_posts": {"type": "integer", "default": 10}
+            }
+          }
+        }
+      ]
+    },
+    "forum-search-server": {
+      "command": "python3",
+      "args": [
+        "/home/avreymi/teamwork_projects/agent_data_sources/tools/forum_tool.py",
+        "--mcp"
+      ],
+      "env": {
+        "SERPAPI_API_KEY": "${SERPAPI_API_KEY}",
+        "GOOGLE_PSE_KEY": "${GOOGLE_PSE_KEY}",
+        "GOOGLE_PSE_CX": "${GOOGLE_PSE_CX}"
+      },
+      "description": "Community discussion boards search across Reddit (Arctic Shift), Rotter.net Scoops (Windows-1255), Discourse, and SERP Dorking.",
+      "tools": [
+        {
+          "name": "search_reddit_arctic_shift",
+          "description": "Search Reddit submissions via the keyless Arctic Shift community archive.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Keywords to search in Reddit"},
+              "subreddit": {"type": "string", "description": "Subreddit name filter (e.g. 'python' or 'Israel')"},
+              "limit": {"type": "integer", "default": 10}
+            }
+          }
+        },
+        {
+          "name": "fetch_rotter_scoops",
+          "description": "Fetch real-time breaking scoops from Rotter.net news RSS with Windows-1255 decoding.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "limit": {"type": "integer", "default": 10}
+            }
+          }
+        },
+        {
+          "name": "search_discourse_forum",
+          "description": "Search any developer Discourse forum (e.g. discuss.python.org, Hugging Face).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "base_url": {"type": "string", "description": "Discourse forum base URL"},
+              "query": {"type": "string", "description": "Search query"},
+              "limit": {"type": "integer", "default": 5}
+            },
+            "required": ["base_url", "query"]
+          }
+        },
+        {
+          "name": "build_serp_forum_dork",
+          "description": "Construct precision Google Dork query for Cloudflare-protected boards (FXP, Quora, Tapuz).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Search topic"},
+              "domain": {"type": "string", "default": "fxp.co.il", "description": "Target forum domain"}
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "search_stackexchange",
+          "description": "Search StackExchange Q&A sites (StackOverflow, ServerFault, Mi Yodeya judaism, etc.).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Search keywords"},
+              "site": {"type": "string", "default": "stackoverflow", "description": "StackExchange site identifier"},
+              "limit": {"type": "integer", "default": 5}
+            },
+            "required": ["query"]
+          }
+        }
+      ]
+    },
+    "news-search-server": {
+      "command": "python3",
+      "args": [
+        "/home/avreymi/teamwork_projects/agent_data_sources/tools/news_tool.py",
+        "--mcp"
+      ],
+      "env": {},
+      "description": "Real-time news retrieval across Google News RSS (Hebrew/English), 12 Israeli news RSS portals, Telegram public channel web previews, and GDELT 2.0.",
+      "tools": [
+        {
+          "name": "search_news",
+          "description": "Search breaking news across Google News RSS, Israeli portals (ynet, haaretz, mako, globes, maariv, walla, c14, inn, bhol), Telegram channels, and GDELT.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {"type": "string", "description": "Search keywords or topic"},
+              "source": {
+                "type": "string",
+                "default": "google_news",
+                "description": "google_news, ynet, haaretz, mako, globes, maariv, walla, c14, inn, bhol, telegram:amitsegal, or gdelt"
+              },
+              "lang": {"type": "string", "enum": ["auto", "he", "en"], "default": "auto"},
+              "limit": {"type": "integer", "default": 10}
+            }
+          }
+        },
+        {
+          "name": "fetch_israeli_rss",
+          "description": "Fetch latest breaking news from a specific Israeli Hebrew news RSS portal.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "default": "ynet",
+                "description": "Portal key: ynet, haaretz, mako, globes, maariv, walla, c14, inn, bhol, jpost, kan, 972mag"
+              },
+              "query": {"type": "string", "description": "Optional keyword filter"},
+              "limit": {"type": "integer", "default": 10}
+            }
+          }
+        },
+        {
+          "name": "fetch_telegram_channel",
+          "description": "Fetch latest posts from a public Telegram channel web preview (e.g. amitsegal, abualiexpress).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "channel": {"type": "string", "default": "amitsegal", "description": "Public channel handle"},
+              "query": {"type": "string", "description": "Optional keyword filter"},
+              "limit": {"type": "integer", "default": 10}
+            },
+            "required": ["channel"]
+          }
+        }
+      ]
+    }
+  }
+}

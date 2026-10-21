@@ -1,0 +1,3 @@
+.agents/
+.local_books_index.db
+__pycache__/
